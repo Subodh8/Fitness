@@ -1,0 +1,970 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fitness OS - Mesocycle 1 Nutrition Engine</title>
+    <style>
+        :root {
+            --bg: #ffffff;
+            --bg-secondary: #f9fafb;
+            --bg-tertiary: #f3f4f6;
+            --text: #111827;
+            --text-secondary: #4b5563;
+            --text-tertiary: #9ca3af;
+            --border: #e5e7eb;
+            --border-secondary: #d1d5db;
+            --border-primary: #f59e0b;
+            --accent: #d97706;
+            --accent-bg: #fef3c7;
+            --accent-text: #78350f;
+            
+            --info-bg: #eff6ff;
+            --info-text: #1e3a8a;
+            --info-border: #bfdbfe;
+            --success-bg: #ecfdf5;
+            --success-text: #064e3b;
+            --success-border: #a7f3d0;
+            --warn-bg: #fffbeb;
+            --warn-text: #78350f;
+            --warn-border: #fde68a;
+            --danger-bg: #fef2f2;
+            --danger-text: #7f1d1d;
+            --danger-border: #fecaca;
+            
+            --radius: 10px;
+            --radius-sm: 6px;
+            --font: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            --mono: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg: #111827;
+                --bg-secondary: #1f2937;
+                --bg-tertiary: #374151;
+                --text: #f9fafb;
+                --text-secondary: #d1d5db;
+                --text-tertiary: #9ca3af;
+                --border: #374151;
+                --border-secondary: #4b5563;
+                --border-primary: #d97706;
+                --accent: #f59e0b;
+                --accent-bg: #45290b;
+                --accent-text: #fde68a;
+                
+                --info-bg: #1e3a8a;
+                --info-text: #dbeafe;
+                --info-border: #1d4ed8;
+                --success-bg: #064e3b;
+                --success-text: #d1fae5;
+                --success-border: #059669;
+                --warn-bg: #78350f;
+                --warn-text: #fef3c7;
+                --warn-border: #d97706;
+                --danger-bg: #7f1d1d;
+                --danger-text: #fee2e2;
+                --danger-border: #dc2626;
+            }
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        
+        body {
+            font-family: var(--font);
+            background-color: var(--bg);
+            color: var(--text);
+            line-height: 1.5;
+            padding: 24px;
+            max-width: 980px;
+            margin: 0 auto;
+        }
+
+        /* Typography & Header */
+        .header { margin-bottom: 24px; border-bottom: 2px solid var(--border); padding-bottom: 16px; }
+        .header-label { font-family: var(--mono); font-size: 0.75rem; color: var(--accent); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; margin-bottom: 4px; display: block; }
+        h1 { font-size: 1.875rem; font-weight: 700; color: var(--text); margin-bottom: 8px; }
+        .subtitle { color: var(--text-secondary); font-size: 1rem; }
+
+        /* Metrics Grid */
+        .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; }
+        .metric-card { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; text-align: center; }
+        .metric-value { font-size: 1.5rem; font-weight: 700; color: var(--text); }
+        .metric-label { font-size: 0.875rem; color: var(--text-secondary); text-transform: uppercase; font-weight: 600; margin-top: 4px; }
+
+        /* Alerts & Info Boxes */
+        .info-box, .warn-box, .success-box, .danger-box { padding: 12px 16px; border-radius: var(--radius-sm); border-left: 4px solid; margin-bottom: 20px; font-size: 0.95rem; }
+        .info-box { background: var(--info-bg); color: var(--info-text); border-color: var(--info-border); }
+        .warn-box { background: var(--warn-bg); color: var(--warn-text); border-color: var(--warn-border); }
+        .success-box { background: var(--success-bg); color: var(--success-text); border-color: var(--success-border); }
+
+        /* Selectors */
+        .selector-row { display: flex; gap: 8px; margin-bottom: 16px; overflow-x: auto; padding-bottom: 8px; }
+        .pill-btn { background: var(--bg-secondary); border: 1px solid var(--border); color: var(--text-secondary); padding: 6px 14px; border-radius: 999px; font-size: 0.875rem; font-weight: 600; cursor: pointer; transition: all 0.2s; white-space: nowrap; }
+        .pill-btn:hover { background: var(--border); }
+        .pill-btn.active { background: var(--accent); color: white; border-color: var(--accent); }
+        
+        .day-selector { display: flex; gap: 8px; margin-bottom: 24px; border-bottom: 1px solid var(--border); padding-bottom: 16px; overflow-x: auto; }
+        .day-tab { background: transparent; border: none; color: var(--text-secondary); padding: 8px 12px; font-weight: 600; font-size: 0.95rem; cursor: pointer; border-radius: var(--radius-sm); transition: 0.2s; white-space: nowrap; }
+        .day-tab:hover { background: var(--bg-secondary); }
+        .day-tab.active { background: var(--bg-tertiary); color: var(--text); box-shadow: 0 2px 0 var(--accent); }
+        .day-tab.special { border: 1px dashed var(--border-secondary); }
+
+        /* Content Blocks */
+        .section-card { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-bottom: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border-secondary); }
+        .section-title { font-size: 1.25rem; font-weight: 700; color: var(--text); }
+        
+        /* Meal Rows */
+        .meal-row { display: flex; align-items: flex-start; gap: 16px; padding: 16px; border: 1px solid var(--border); border-radius: var(--radius-sm); margin-bottom: 12px; background: var(--bg-secondary); transition: opacity 0.3s; }
+        .meal-row.completed { opacity: 0.6; background: var(--bg); border-color: var(--border-secondary); }
+        .meal-row.completed .meal-content { text-decoration: line-through; color: var(--text-tertiary); }
+        
+        /* Checkbox */
+        .checkbox-wrapper { padding-top: 4px; }
+        .custom-checkbox { width: 22px; height: 22px; border: 2px solid var(--text-tertiary); border-radius: 4px; cursor: pointer; display: flex; align-items: center; justify-content: center; background: var(--bg); transition: 0.2s; }
+        .meal-row.completed .custom-checkbox { background: var(--accent); border-color: var(--accent); }
+        .meal-row.completed .custom-checkbox::after { content: '✓'; color: white; font-weight: bold; font-size: 14px; }
+
+        /* Meal Details */
+        .meal-body { flex: 1; }
+        .meal-meta { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+        .meal-time { font-family: var(--mono); font-weight: 600; font-size: 0.9rem; color: var(--text); }
+        .meal-title { font-weight: 700; font-size: 1.05rem; }
+        .meal-foods { margin-left: 20px; margin-bottom: 12px; color: var(--text-secondary); font-size: 0.95rem; }
+        .meal-foods li { margin-bottom: 4px; }
+        .meal-macros { font-family: var(--mono); font-size: 0.8rem; color: var(--text-tertiary); background: var(--bg); padding: 4px 8px; border-radius: 4px; border: 1px solid var(--border); display: inline-block; }
+        .coaching-note { margin-top: 12px; font-size: 0.875rem; color: var(--text-secondary); background: var(--bg); padding: 8px 12px; border-left: 3px solid var(--accent); border-radius: 4px; font-style: italic; }
+
+        /* Badges & Pills */
+        .badge { font-size: 0.75rem; font-weight: 700; padding: 2px 8px; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.05em; }
+        .badge.teal { background: #ccfbf1; color: #0f766e; }
+        .badge.purple { background: #f3e8ff; color: #6b21a8; }
+        .badge.amber { background: #fef3c7; color: #b45309; }
+        .badge.blue { background: #dbeafe; color: #1d4ed8; }
+        .badge.green { background: #dcfce3; color: #166534; }
+        .badge.coral { background: #ffe4e6; color: #be123c; }
+        .badge.gray { background: #f3f4f6; color: #374151; }
+        @media (prefers-color-scheme: dark) {
+            .badge.teal { background: #0f766e; color: #ccfbf1; }
+            .badge.purple { background: #6b21a8; color: #f3e8ff; }
+            .badge.amber { background: #b45309; color: #fef3c7; }
+            .badge.blue { background: #1d4ed8; color: #dbeafe; }
+            .badge.green { background: #166534; color: #dcfce3; }
+            .badge.coral { background: #be123c; color: #ffe4e6; }
+            .badge.gray { background: #4b5563; color: #f9fafb; }
+        }
+
+        .supp-pill { font-size: 0.75rem; padding: 2px 8px; border-radius: 12px; font-weight: 600; display: inline-block; margin-right: 6px; border: 1px solid; }
+        .pill-creatine { background: rgba(59, 130, 246, 0.1); color: #3b82f6; border-color: #3b82f6; }
+        .pill-vitd { background: rgba(245, 158, 11, 0.1); color: #d97706; border-color: #f59e0b; }
+        .pill-omega { background: rgba(20, 184, 166, 0.1); color: #0d9488; border-color: #14b8a6; }
+        .pill-whey { background: rgba(168, 85, 247, 0.1); color: #9333ea; border-color: #a855f7; }
+        .pill-caffeine { background: rgba(107, 114, 128, 0.1); color: #4b5563; border-color: #6b7280; }
+
+        /* Progress Bar */
+        .progress-container { margin-bottom: 24px; }
+        .progress-header { display: flex; justify-content: space-between; font-size: 0.875rem; font-weight: 600; margin-bottom: 8px; }
+        .progress-track { height: 8px; background: var(--bg-tertiary); border-radius: 4px; overflow: hidden; }
+        .progress-fill { height: 100%; background: var(--accent); transition: width 0.3s ease; width: 0%; }
+
+        /* Macro & Timing Diagrams */
+        .timing-diagram { display: flex; align-items: center; gap: 12px; overflow-x: auto; padding: 12px; background: var(--bg-secondary); border-radius: var(--radius-sm); border: 1px solid var(--border); margin-bottom: 20px; font-size: 0.85rem; font-weight: 600; white-space: nowrap; }
+        .timing-arrow { color: var(--text-tertiary); font-family: var(--mono); }
+        .timing-block { padding: 4px 8px; background: var(--bg); border: 1px solid var(--border-secondary); border-radius: 4px; }
+        
+        .macro-summary { margin-bottom: 24px; padding: 16px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg); }
+        .macro-row { margin-bottom: 12px; }
+        .macro-row:last-child { margin-bottom: 0; }
+        .macro-labels { display: flex; justify-content: space-between; font-size: 0.85rem; font-weight: 600; margin-bottom: 4px; }
+        .macro-bar-bg { height: 12px; background: var(--bg-tertiary); border-radius: 6px; overflow: hidden; position: relative; }
+        .macro-bar-fill { height: 100%; position: absolute; left: 0; top: 0; border-radius: 6px; }
+        .fill-p { background: #3b82f6; }
+        .fill-f { background: #f59e0b; }
+        .fill-c { background: #10b981; }
+
+        /* Tables */
+        table { width: 100%; border-collapse: collapse; margin-bottom: 16px; font-size: 0.9rem; }
+        th, td { text-align: left; padding: 10px; border-bottom: 1px solid var(--border); }
+        th { background: var(--bg-secondary); font-weight: 600; color: var(--text-secondary); }
+
+        /* Utilities */
+        .flex-between { display: flex; justify-content: space-between; align-items: center; }
+        .text-right { text-align: right; }
+        .mt-4 { margin-top: 16px; }
+        .reset-btn { background: transparent; border: 1px solid var(--border-secondary); color: var(--text-secondary); padding: 4px 10px; border-radius: 4px; font-size: 0.8rem; cursor: pointer; transition: 0.2s; }
+        .reset-btn:hover { background: var(--danger-bg); color: var(--danger-text); border-color: var(--danger-border); }
+
+        /* Sync Banner */
+        .sync-banner { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 16px; margin-bottom: 16px; font-size: 13px; color: var(--text-secondary); display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+        .sync-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-tertiary); flex-shrink: 0; transition: background 0.3s; }
+        .sync-dot.synced { background: #22c55e; }
+        .sync-dot.syncing { background: var(--accent); }
+        .sync-dot.error { background: #ef4444; }
+        .sync-status { font-size: 11px; font-family: var(--mono); color: var(--text-tertiary); }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <span class="header-label">Fitness OS • 7-Month Body Recomposition Program</span>
+        <h1>Mesocycle 1: Nutrition Engine</h1>
+        <p class="subtitle" id="week-subtitle">Foundation Phase — Build dietary habits, nail meal timing, strict adherence.</p>
+    </div>
+
+    <div class="metrics">
+        <div class="metric-card">
+            <div class="metric-value">2,500</div>
+            <div class="metric-label">Daily Kcal</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-value" style="color: #3b82f6;">140g</div>
+            <div class="metric-label">Protein (22%)</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-value" style="color: #f59e0b;">55g</div>
+            <div class="metric-label">Fat (20%)</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-value" style="color: #10b981;">361g</div>
+            <div class="metric-label">Carbs (58%)</div>
+        </div>
+    </div>
+
+    <div class="info-box">
+        <strong>Strategy Rule:</strong> No beef. Avoid fish (tuna allowed). White rice only (strictly basmati where rice is used). Substitute dairy milk with Silk dark chocolate almond milk. 
+    </div>
+
+    <div class="selector-row" id="week-selector">
+        <button class="pill-btn active" onclick="setWeek(1)">Week 1</button>
+        <button class="pill-btn" onclick="setWeek(2)">Week 2</button>
+        <button class="pill-btn" onclick="setWeek(3)">Week 3</button>
+        <button class="pill-btn" onclick="setWeek(4)">Week 4 (Deload)</button>
+    </div>
+
+    <div class="day-selector" id="day-selector">
+        <button class="day-tab active" onclick="setDay('monday')">Mon</button>
+        <button class="day-tab" onclick="setDay('tuesday')">Tue</button>
+        <button class="day-tab" onclick="setDay('wednesday')">Wed</button>
+        <button class="day-tab" onclick="setDay('thursday')">Thu</button>
+        <button class="day-tab" onclick="setDay('friday')">Fri</button>
+        <button class="day-tab" onclick="setDay('saturday')">Sat (Veg)</button>
+        <button class="day-tab" onclick="setDay('sunday')">Sun</button>
+        <div style="width: 1px; background: var(--border); margin: 0 8px;"></div>
+        <button class="day-tab special" onclick="setDay('prep')">Prep Guide</button>
+        <button class="day-tab special" onclick="setDay('supps')">Supplements</button>
+        <button class="day-tab special" onclick="setDay('shop')">Shopping List</button>
+    </div>
+
+    <div id="content">
+        <!-- Dynamic content renders here -->
+    </div>
+
+<script>
+    // Supabase Sync
+    var NF_URL = 'https://zylbnchahrjvrkhqivwp.supabase.co/functions/v1/nutrition-sync';
+
+    function getDeviceId() {
+        var id = localStorage.getItem('fos-device');
+        if (!id) { id = 'd-' + Math.random().toString(36).slice(2) + Date.now().toString(36); localStorage.setItem('fos-device', id); }
+        return id;
+    }
+    var DEVICE = getDeviceId();
+    var CACHE = {};
+    function ck(day, week) { return day + '_' + week; }
+
+    function syncUI(cls, msg) {
+        var dot = document.getElementById('sdot'), lbl = document.getElementById('slbl');
+        if (dot) { dot.className = 'sync-dot ' + cls; }
+        if (lbl) { lbl.textContent = msg; }
+    }
+
+    function loadRows(day, week) {
+        syncUI('syncing', 'Loading...');
+        var key = ck(day, week);
+        return fetch(NF_URL + '?action=load&device_id=' + DEVICE + '&day=' + day + '&week=' + week)
+            .then(function(r) { return r.json(); })
+            .then(function(rows) {
+                var map = {};
+                if (Array.isArray(rows)) rows.forEach(function(r) { map[r.meal_index] = r.checked; });
+                CACHE[key] = map;
+                syncUI('synced', 'Synced');
+                return map;
+            })
+            .catch(function() {
+                syncUI('error', 'Offline');
+                if (!CACHE[key]) CACHE[key] = {};
+                return CACHE[key];
+            });
+    }
+
+    function saveRow(day, week, idx, checked) {
+        syncUI('syncing', 'Saving...');
+        var key = ck(day, week);
+        if (!CACHE[key]) CACHE[key] = {};
+        CACHE[key][idx] = checked;
+        fetch(NF_URL + '?action=save', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ device_id: DEVICE, day: day, week: week, meal_index: idx, checked: checked })
+        }).then(function(r) { syncUI(r.ok ? 'synced' : 'error', r.ok ? 'Saved' : 'Save failed'); })
+          .catch(function() { syncUI('error', 'Offline'); });
+    }
+
+    function resetRows(day, week) {
+        syncUI('syncing', 'Resetting...');
+        CACHE[ck(day, week)] = {};
+        fetch(NF_URL + '?action=reset&device_id=' + DEVICE + '&day=' + day + '&week=' + week, { method: 'DELETE' })
+            .then(function() { syncUI('synced', 'Reset done'); render(); })
+            .catch(function() { syncUI('error', 'Offline'); render(); });
+    }
+
+    // System State
+    let currentWeek = 1;
+    let currentDay = 'monday';
+
+    const weekSubtitles = {
+        1: "Orientation — Nail the timing, learn your portions. Don't worry if it's not perfect.",
+        2: "Calibration — Adjust volumes if energy is low or if tracking feels off.",
+        3: "Accumulation — Hit macros consistently. This is the hardest week of the block.",
+        4: "Deload — NUTRITION STAYS THE SAME. Training volume drops, calories do NOT drop."
+    };
+
+    // Data Engine
+    const DATA = {
+        monday: {
+            title: "Monday", type: "Training (Upper A)", isTraining: true,
+            macros: { p: 172, f: 55, c: 326, kcal: 2500 }, // Approximations tailored to fit
+            meals:[
+                { time: "6:00 AM", name: "Pre-Workout Oatmeal", type: "Pre-WO", tag: "teal",
+                  foods:["60g Rolled Oats", "125ml Silk dark choc almond milk", "1 medium Banana"],
+                  supps:[{cls:"pill-caffeine", label:"Caffeine 200mg"}, {cls:"pill-creatine", label:"Creatine 5g"}],
+                  macros: "11P / 5F / 70C · 385 kcal",
+                  note: "Eat 45-60 min before the gym. High GI carbs for immediate training energy. Caffeine takes 30-45m to peak." },
+                { time: "9:15 AM", name: "Post-WO Shake", type: "Shake", tag: "purple",
+                  foods:["1 scoop Whey Protein", "250ml Silk dark choc almond milk"],
+                  supps: [{cls:"pill-whey", label:"Whey"}],
+                  macros: "26P / 5F / 11C · 200 kcal",
+                  note: "Immediate liquid protein for muscle protein synthesis." },
+                { time: "9:30 AM", name: "Post-WO Meal", type: "Post-WO", tag: "amber",
+                  foods:["150g Chicken breast (cooked)", "1.5 cups Basmati rice", "100g Broccoli", "1 tsp Olive oil"],
+                  supps:[],
+                  macros: "53P / 10F / 74C · 610 kcal",
+                  note: "Largest carb meal of the day. Post-workout is the optimal window for carb absorption due to GLUT-4 upregulation." },
+                { time: "1:00 PM", name: "Tuna Wraps", type: "Lunch", tag: "blue",
+                  foods:["1 can Tuna (drained)", "2 Whole wheat wraps", "30g Cheddar cheese", "Mixed veggies (spinach/peppers)"],
+                  supps:[],
+                  macros: "61P / 15F / 60C · 610 kcal",
+                  note: "High protein, moderate fat to sustain energy levels through the afternoon." },
+                { time: "4:30 PM", name: "Yogurt Parfait", type: "Snack", tag: "green",
+                  foods:["200g 0% Greek Yogurt (Oikos)", "1 cup Blueberries", "30g Granola"],
+                  supps:[],
+                  macros: "21P / 4.5F / 52C · 324 kcal",
+                  note: "Casein/whey blend from yogurt keeps amino acids flowing. Berries for antioxidants." },
+                { time: "7:30 PM", name: "Chicken Thighs & Roots", type: "Dinner", tag: "coral",
+                  foods:["150g Skinless Chicken thighs", "1 cup Basmati rice (replaced brown per white-rice rule)", "100g Sweet potato", "100g Sauteed spinach"],
+                  supps:[{cls:"pill-vitd", label:"Vit D3 2000 IU"}, {cls:"pill-omega", label:"Omega-3 2g"}],
+                  macros: "45P / 15F / 80C · 645 kcal",
+                  note: "Take Vitamin D and Omega-3 here—they are fat-soluble and absorb best with the fats from the chicken thighs." }
+            ]
+        },
+        tuesday: {
+            title: "Tuesday", type: "Training (Lower A)", isTraining: true,
+            macros: { p: 165, f: 55, c: 335, kcal: 2500 },
+            meals:[
+                { time: "6:00 AM", name: "PB Banana Toast", type: "Pre-WO", tag: "teal",
+                  foods:["2 slices Whole wheat bread", "1 tbsp Peanut butter", "1 medium Banana"],
+                  supps:[{cls:"pill-caffeine", label:"Caffeine 200mg"}, {cls:"pill-creatine", label:"Creatine 5g"}],
+                  macros: "13P / 9F / 62C · 350 kcal",
+                  note: "Lower fat than standard PB serving to ensure fast gastric emptying before squats." },
+                { time: "9:15 AM", name: "Post-WO Shake", type: "Shake", tag: "purple",
+                  foods:["1 scoop Whey Protein", "250ml Silk dark choc almond milk"],
+                  supps:[{cls:"pill-whey", label:"Whey"}],
+                  macros: "26P / 5F / 11C · 200 kcal",
+                  note: "Kickstart recovery immediately after intense lower body session." },
+                { time: "9:30 AM", name: "Chicken & Corn Rice", type: "Post-WO", tag: "amber",
+                  foods:["150g Skinless Chicken thigh", "1.5 cups Basmati rice", "100g Corn"],
+                  supps:[],
+                  macros: "40P / 12F / 88C · 610 kcal",
+                  note: "Corn adds fast-digesting carbs to the rice to replenish depleted leg glycogen." },
+                { time: "1:00 PM", name: "Cottage Cheese Toast", type: "Lunch", tag: "blue",
+                  foods:["200g 2% Cottage cheese", "2 slices Whole wheat bread", "Cherry tomatoes (handful)"],
+                  supps:[],
+                  macros: "32P / 5F / 34C · 305 kcal",
+                  note: "Cottage cheese provides slow-digesting casein, perfect for an office day." },
+                { time: "4:30 PM", name: "Yogurt & Apple", type: "Snack", tag: "green",
+                  foods:["200g 0% Greek Yogurt", "1 medium Apple", "30g Granola"],
+                  supps:[],
+                  macros: "20P / 4F / 56C · 335 kcal",
+                  note: "Pectin from the apple improves gut health and satiety." },
+                { time: "7:30 PM", name: "Tuna Pasta Base", type: "Dinner", tag: "coral",
+                  foods:["1 can Tuna (drained)", "100g Whole wheat penne (dry measure)", "1/2 cup Marinara + 15g Parmesan", "100g Broccoli"],
+                  supps:[{cls:"pill-vitd", label:"Vit D3"}, {cls:"pill-omega", label:"Omega-3"}],
+                  macros: "58P / 9F / 82C · 650 kcal",
+                  note: "Pasta provides dense carbs to prepare for Wednesday's Pull workout." }
+            ]
+        },
+        wednesday: {
+            title: "Wednesday", type: "Training (Pull + Arms)", isTraining: true,
+            macros: { p: 168, f: 58, c: 325, kcal: 2490 },
+            meals:[
+                { time: "6:00 AM", name: "Almond Butter Oats", type: "Pre-WO", tag: "teal",
+                  foods:["60g Oats", "125ml Silk almond milk", "1 tbsp Almond butter", "Dash of cinnamon"],
+                  supps:[{cls:"pill-caffeine", label:"Caffeine 200mg"}, {cls:"pill-creatine", label:"Creatine 5g"}],
+                  macros: "14P / 11F / 42C · 330 kcal",
+                  note: "Cinnamon helps with insulin sensitivity for the morning carb load." },
+                { time: "9:15 AM", name: "Post-WO Shake", type: "Shake", tag: "purple",
+                  foods:["1 scoop Whey Protein", "250ml Silk dark choc almond milk"],
+                  supps:[{cls:"pill-whey", label:"Whey"}],
+                  macros: "26P / 5F / 11C · 200 kcal",
+                  note: "Hydration and aminos post back/biceps." },
+                { time: "9:30 AM", name: "Avocado Chicken Bowl", type: "Post-WO", tag: "amber",
+                  foods:["150g Chicken breast", "1.5 cups Basmati rice", "100g Sauteed spinach", "1/2 Avocado"],
+                  supps:[],
+                  macros: "55P / 15F / 72C · 650 kcal",
+                  note: "Avocado serves as the healthy fat replacement for salmon here." },
+                { time: "1:00 PM", name: "Greek Chicken & Rice", type: "Lunch", tag: "blue",
+                  foods:["150g Chicken breast", "1 cup Basmati rice (replaced brown)", "Roasted bell peppers", "30g Feta cheese"],
+                  supps:[],
+                  macros: "54P / 8F / 48C · 500 kcal",
+                  note: "Feta adds flavor and trace dairy fats to keep hormonal health stable." },
+                { time: "4:30 PM", name: "Cottage Cheese Bowl", type: "Snack", tag: "green",
+                  foods:["200g 2% Cottage cheese", "1 medium Banana", "1 tbsp Chia seeds"],
+                  supps:[],
+                  macros: "27P / 7F / 38C · 310 kcal",
+                  note: "Chia seeds add fiber and plant-based Omega-3s." },
+                { time: "7:30 PM", name: "Sweet Potato Chicken", type: "Dinner", tag: "coral",
+                  foods:["150g Baked chicken breast", "200g Sweet potato", "100g Green beans", "1 tsp Olive oil"],
+                  supps:[{cls:"pill-vitd", label:"Vit D3"}, {cls:"pill-omega", label:"Omega-3"}],
+                  macros: "51P / 8F / 48C · 500 kcal",
+                  note: "Lean dinner since fat was allocated to the post-workout avocado." }
+            ]
+        },
+        thursday: {
+            title: "Thursday", type: "Training (Upper B)", isTraining: true,
+            macros: { p: 170, f: 55, c: 330, kcal: 2500 },
+            meals:[
+                { time: "6:00 AM", name: "Pre-Workout Oatmeal", type: "Pre-WO", tag: "teal",
+                  foods:["60g Rolled Oats", "125ml Silk dark choc almond milk", "1 medium Banana"],
+                  supps:[{cls:"pill-caffeine", label:"Caffeine 200mg"}, {cls:"pill-creatine", label:"Creatine 5g"}],
+                  macros: "11P / 5F / 70C · 385 kcal",
+                  note: "Repeat of Monday's proven pre-workout fuel." },
+                { time: "9:15 AM", name: "Post-WO Shake", type: "Shake", tag: "purple",
+                  foods:["1 scoop Whey Protein", "250ml Silk dark choc almond milk"],
+                  supps:[{cls:"pill-whey", label:"Whey"}],
+                  macros: "26P / 5F / 11C · 200 kcal",
+                  note: "Standard post-workout protocol." },
+                { time: "9:30 AM", name: "Chicken Burrito Bowl", type: "Post-WO", tag: "amber",
+                  foods:["150g Chicken breast", "1.5 cups Basmati rice", "100g Black beans", "Salsa", "30g Cheddar"],
+                  supps:[],
+                  macros: "65P / 12F / 96C · 750 kcal",
+                  note: "Black beans provide heavy fiber and sustained carbs after a volume upper session." },
+                { time: "1:00 PM", name: "Tuna Wraps", type: "Lunch", tag: "blue",
+                  foods: ["1 can Tuna", "2 Whole wheat wraps", "30g Cheddar", "Veggies"],
+                  supps:[],
+                  macros: "61P / 15F / 60C · 610 kcal",
+                  note: "Prep repeat from Monday." },
+                { time: "4:30 PM", name: "Berry Almond Yogurt", type: "Snack", tag: "green",
+                  foods:["200g 0% Greek Yogurt", "Mixed berries (1 cup)", "25g Almonds"],
+                  supps:[],
+                  macros: "24P / 12F / 30C · 340 kcal",
+                  note: "Almonds provide healthy monounsaturated fats." },
+                { time: "7:30 PM", name: "Cheesy Chicken Roots", type: "Dinner", tag: "coral",
+                  foods:["100g Chicken breast", "200g Mashed sweet potato", "100g Broccoli", "15g Cheddar melted"],
+                  supps:[{cls:"pill-vitd", label:"Vit D3"}, {cls:"pill-omega", label:"Omega-3"}],
+                  macros: "40P / 8F / 49C · 425 kcal",
+                  note: "Lighter dinner tonight to balance the massive burrito bowl earlier." }
+            ]
+        },
+        friday: {
+            title: "Friday", type: "Rest & Recovery", isTraining: false,
+            macros: { p: 155, f: 60, c: 335, kcal: 2500 },
+            meals:[
+                { time: "8:00 AM", name: "Egg & Spinach Plate", type: "Breakfast", tag: "teal",
+                  foods:["3 Scrambled eggs", "2 slices Whole wheat toast", "100g Sauteed spinach"],
+                  supps:[{cls:"pill-creatine", label:"Creatine 5g"}],
+                  macros: "26P / 16F / 32C · 360 kcal",
+                  note: "Eggs provide bioavailable protein and choline. No caffeine needed on rest day." },
+                { time: "1:00 PM", name: "Chicken Veggie Rice", type: "Lunch", tag: "blue",
+                  foods:["150g Chicken breast", "2 cups Basmati rice (replaced brown)", "Roasted mixed veg", "1 tsp Olive oil"],
+                  supps:[],
+                  macros: "55P / 8F / 90C · 660 kcal",
+                  note: "High carb lunch to fully replenish glycogen stores for Saturday's leg day." },
+                { time: "4:00 PM", name: "Yogurt Bowl", type: "Snack", tag: "green",
+                  foods:["200g 0% Greek Yogurt", "1 medium Banana", "30g Granola"],
+                  supps:[],
+                  macros: "21P / 4F / 58C · 345 kcal",
+                  note: "Simple digestion, holds you over until dinner." },
+                { time: "7:30 PM", name: "Chicken Thighs & Roots", type: "Dinner", tag: "coral",
+                  foods:["150g Chicken thighs", "1.5 cups Basmati rice", "100g Sweet potato", "100g Broccoli"],
+                  supps:[{cls:"pill-vitd", label:"Vit D3"}, {cls:"pill-omega", label:"Omega-3"}],
+                  macros: "45P / 15F / 92C · 670 kcal",
+                  note: "Pre-loading carbs heavily tonight for tomorrow morning's intense Lower B session." },
+                { time: "9:00 PM", name: "Casein Nightcap", type: "Evening", tag: "gray",
+                  foods:["150g 2% Cottage cheese", "2 Rice cakes", "1 tsp Honey"],
+                  supps:[],
+                  macros: "18P / 3F / 25C · 200 kcal",
+                  note: "Slow-digesting dairy protein to keep MPS elevated overnight." }
+            ]
+        },
+        saturday: {
+            title: "Saturday", type: "Training (Lower B + Core) • VEGETARIAN", isTraining: true, veg: true,
+            macros: { p: 145, f: 55, c: 355, kcal: 2500 },
+            meals:[
+                { time: "6:00 AM", name: "Pre-Workout Oatmeal", type: "Pre-WO", tag: "teal",
+                  foods:["60g Rolled Oats", "125ml Silk dark choc almond milk", "1 medium Banana"],
+                  supps:[{cls:"pill-caffeine", label:"Caffeine 200mg"}, {cls:"pill-creatine", label:"Creatine 5g"}],
+                  macros: "11P / 5F / 70C · 385 kcal",
+                  note: "Standard pre-workout setup. Fully vegetarian." },
+                { time: "9:15 AM", name: "Post-WO Shake", type: "Shake", tag: "purple",
+                  foods:["1 scoop Whey Protein", "250ml Silk dark choc almond milk"],
+                  supps:[{cls:"pill-whey", label:"Whey"}],
+                  macros: "26P / 5F / 11C · 200 kcal",
+                  note: "Whey is derived from milk, not meat—it is perfectly compliant with a vegetarian day." },
+                { time: "9:30 AM", name: "Tofu Stir-fry", type: "Post-WO", tag: "amber",
+                  foods:["200g Firm tofu", "1.5 cups Basmati rice", "100g Broccoli & Bell peppers", "Soy sauce + 1 tsp Sesame oil"],
+                  supps:[],
+                  macros: "22P / 13F / 74C · 520 kcal",
+                  note: "Tofu provides complete plant protein; sesame oil gives healthy fats." },
+                { time: "1:00 PM", name: "Chickpea Spinach Curry", type: "Lunch", tag: "blue",
+                  foods:["240g Canned chickpeas", "100g Spinach + Diced tomatoes + Spices", "1 cup Basmati rice", "100g Greek yogurt raita"],
+                  supps:[],
+                  macros: "30P / 5F / 90C · 530 kcal",
+                  note: "Legumes + rice form a complete amino acid profile. Yogurt adds casein/whey." },
+                { time: "4:30 PM", name: "Berry Almond Yogurt", type: "Snack", tag: "green",
+                  foods:["200g 0% Greek Yogurt", "1 cup Blueberries", "25g Almonds"],
+                  supps:[],
+                  macros: "24P / 12F / 30C · 340 kcal",
+                  note: "Heavy dairy protein to ensure we hit the 140g target without meat." },
+                { time: "7:30 PM", name: "Red Lentil Dal", type: "Dinner", tag: "coral",
+                  foods:["100g Red lentils (dry measure) cooked with tomatoes/onion/cumin", "2 Whole wheat wraps", "30g Feta crumbled"],
+                  supps:[{cls:"pill-vitd", label:"Vit D3"}, {cls:"pill-omega", label:"Omega-3"}],
+                  macros: "36P / 10F / 100C · 640 kcal",
+                  note: "Lentils are nutrient-dense powerhouses. Massive carb load to aid leg day recovery." }
+            ]
+        },
+        sunday: {
+            title: "Sunday", type: "Rest & Prep", isTraining: false,
+            macros: { p: 155, f: 58, c: 340, kcal: 2500 },
+            meals:[
+                { time: "8:00 AM", name: "Peanut Butter Oats", type: "Breakfast", tag: "teal",
+                  foods:["60g Oats", "250ml Silk dark choc almond milk", "1 tbsp Peanut butter", "1 medium Banana"],
+                  supps:[{cls:"pill-creatine", label:"Creatine 5g"}],
+                  macros: "15P / 11F / 75C · 460 kcal",
+                  note: "Larger breakfast since no early training. Excellent sustained energy." },
+                { time: "1:00 PM", name: "Turkey Stir-fry", type: "Lunch", tag: "blue",
+                  foods:["150g Ground turkey", "1.5 cups Basmati rice (replaced brown)", "Roasted bell peppers", "30g Cheddar"],
+                  supps:[],
+                  macros: "50P / 18F / 68C · 640 kcal",
+                  note: "Turkey used as lean meat alternative to avoid beef/fish." },
+                { time: "4:00 PM", name: "Yogurt & Apple", type: "Snack", tag: "green",
+                  foods:["200g 0% Greek Yogurt", "1 medium Apple", "30g Granola"],
+                  supps:[],
+                  macros: "20P / 4F / 56C · 335 kcal",
+                  note: "Standard afternoon staple." },
+                { time: "7:30 PM", name: "Roasted Turkey Base", type: "Dinner", tag: "coral",
+                  foods:["150g Roasted Turkey breast", "1.5 cups Basmati rice", "100g Sweet potato", "100g Sauteed spinach (1.5 tsp olive oil)"],
+                  supps:[{cls:"pill-vitd", label:"Vit D3"}, {cls:"pill-omega", label:"Omega-3"}],
+                  macros: "52P / 10F / 98C · 680 kcal",
+                  note: "Heavy carb meal to top off glycogen stores for Monday's Upper A session." },
+                { time: "9:00 PM", name: "Casein Nightcap", type: "Evening", tag: "gray",
+                  foods:["150g 2% Cottage cheese", "2 Rice cakes", "1 tsp Honey"],
+                  supps:[],
+                  macros: "18P / 3F / 25C · 200 kcal",
+                  note: "Casein protein to rebuild muscle overnight." }
+            ]
+        }
+    };
+
+    function onMealCheck(checkbox, day, week, idx) {
+        saveRow(day, week, idx, checkbox.checked);
+
+        const row = document.getElementById(`meal-row-${idx}`);
+        if(checkbox.checked) {
+            row.classList.add('completed');
+        } else {
+            row.classList.remove('completed');
+        }
+        updateProgressBar(day, week);
+    }
+
+    function updateProgressBar(day, week) {
+        if (!DATA[day]) return;
+        const total = DATA[day].meals.length;
+        const data = CACHE[ck(day, week)] || {};
+        const completed = Object.values(data).filter(v => v).length;
+        const pct = Math.round((completed / total) * 100);
+        
+        const fill = document.getElementById('pb-fill');
+        const text = document.getElementById('pb-text');
+        if (fill && text) {
+            fill.style.width = `${pct}%`;
+            text.innerText = `${completed} of ${total} meals tracked`;
+        }
+    }
+
+    function resetDay() {
+        if (confirm(`Clear all tracked meals for Week ${currentWeek} ${DATA[currentDay].title}?`)) {
+            resetRows(currentDay, currentWeek);
+        }
+    }
+
+    function setWeek(w) {
+        currentWeek = w;
+        document.querySelectorAll('#week-selector .pill-btn').forEach((btn, idx) => {
+            btn.classList.toggle('active', idx + 1 === w);
+        });
+        document.getElementById('week-subtitle').innerText = weekSubtitles[w];
+        loadAndRender();
+    }
+
+    function setDay(d) {
+        currentDay = d;
+        document.querySelectorAll('.day-tab').forEach(btn => {
+            btn.classList.remove('active');
+            if (btn.innerText.toLowerCase().includes(d.substring(0,3))) {
+                btn.classList.add('active');
+            } else if (d === 'prep' && btn.innerText.includes('Prep')) {
+                btn.classList.add('active');
+            } else if (d === 'supps' && btn.innerText.includes('Supp')) {
+                btn.classList.add('active');
+            } else if (d === 'shop' && btn.innerText.includes('Shop')) {
+                btn.classList.add('active');
+            }
+        });
+        loadAndRender();
+    }
+
+    function renderMacroBar(p, f, c, pctP, pctF, pctC) {
+        return `
+        <div class="macro-summary">
+            <div style="font-size: 0.9rem; margin-bottom: 12px; font-weight: 600; display: flex; justify-content: space-between;">
+                <span>Daily Approximations vs Targets</span>
+                <span style="color: var(--text-tertiary); font-weight: 400; font-size: 0.8rem;">(Protein safely over 140g min)</span>
+            </div>
+            <div class="macro-row">
+                <div class="macro-labels"><span>Protein (${p}g)</span> <span>Target: 140g</span></div>
+                <div class="macro-bar-bg"><div class="macro-bar-fill fill-p" style="width: ${Math.min(100, pctP)}%"></div></div>
+            </div>
+            <div class="macro-row">
+                <div class="macro-labels"><span>Fat (${f}g)</span> <span>Target: 55g</span></div>
+                <div class="macro-bar-bg"><div class="macro-bar-fill fill-f" style="width: ${Math.min(100, pctF)}%"></div></div>
+            </div>
+            <div class="macro-row">
+                <div class="macro-labels"><span>Carbs (${c}g)</span> <span>Target: 361g</span></div>
+                <div class="macro-bar-bg"><div class="macro-bar-fill fill-c" style="width: ${Math.min(100, pctC)}%"></div></div>
+            </div>
+        </div>`;
+    }
+
+    function renderDay(dayId) {
+        const day = DATA[dayId];
+        const progress = CACHE[ck(dayId, currentWeek)] || {};
+        let html = '';
+
+        if (currentWeek === 4) {
+            html += `<div class="warn-box"><strong>Week 4 Deload:</strong> Maintain exact same calories and macros. Do NOT drop food intake just because training volume drops. Recovery requires fuel.</div>`;
+        }
+        if (dayId === 'monday') {
+            html += `<div class="info-box"><strong>Prep Reminder:</strong> Monday is your primary cook day. Do your batch prep immediately after your Post-WO meal. See the Prep Guide tab.</div>`;
+        }
+        if (dayId === 'saturday') {
+            html += `<div class="success-box"><strong>Vegetarian Day:</strong> Today has no meat. Remember: Whey protein is derived from milk, not meat, so it is 100% compliant and necessary to hit your 140g goal today.</div>`;
+        }
+
+        let timingHtml = day.meals.map(m => `<div class="timing-block">${m.time.replace(' AM','a').replace(' PM','p')}</div>`).join('<span class="timing-arrow">→</span>');
+        html += `<div class="timing-diagram">${timingHtml}</div>`;
+        html += `<div class="sync-banner"><div class="sync-dot synced" id="sdot"></div><span class="sync-status" id="slbl">Synced to cloud</span><span style="color:var(--text-tertiary);font-size:12px;margin-left:auto">Progress saves across all your devices</span></div>`;
+
+        // Calculate % for macro bars
+        let pctP = (day.macros.p / 140) * 100;
+        let pctF = (day.macros.f / 55) * 100;
+        let pctC = (day.macros.c / 361) * 100;
+        html += renderMacroBar(day.macros.p, day.macros.f, day.macros.c, pctP, pctF, pctC);
+
+        html += `
+        <div class="section-card">
+            <div class="section-header">
+                <div class="section-title">${day.title} <span style="font-weight: 400; color: var(--text-secondary); font-size: 1rem;">— ${day.type}</span></div>
+                <button class="reset-btn" onclick="resetDay()">Reset Day</button>
+            </div>
+            
+            <div class="progress-container">
+                <div class="progress-header">
+                    <span>Daily Adherence</span>
+                    <span id="pb-text">0 of ${day.meals.length} meals tracked</span>
+                </div>
+                <div class="progress-track">
+                    <div class="progress-fill" id="pb-fill"></div>
+                </div>
+            </div>`;
+
+        day.meals.forEach((m, idx) => {
+            const isDone = progress[idx];
+            const checkedAttr = isDone ? 'checked' : '';
+            const rowClass = isDone ? 'meal-row completed' : 'meal-row';
+            
+            let suppsHtml = m.supps.map(s => `<span class="supp-pill ${s.cls}">${s.label}</span>`).join('');
+            let foodsHtml = m.foods.map(f => `<li>${f}</li>`).join('');
+
+            html += `
+            <div class="meal-row ${rowClass}" id="meal-row-${idx}">
+                <div class="checkbox-wrapper">
+                    <label>
+                        <input type="checkbox" style="display:none;" ${checkedAttr} onchange="onMealCheck(this, '${dayId}', ${currentWeek}, ${idx})">
+                        <div class="custom-checkbox"></div>
+                    </label>
+                </div>
+                <div class="meal-body">
+                    <div class="meal-meta">
+                        <span class="meal-time">${m.time}</span>
+                        <span class="badge ${m.tag}">${m.type}</span>
+                        ${suppsHtml}
+                    </div>
+                    <div class="meal-title">${m.name}</div>
+                    <ul class="meal-foods">${foodsHtml}</ul>
+                    <div class="meal-macros">${m.macros}</div>
+                    <div class="coaching-note">${m.note}</div>
+                </div>
+            </div>`;
+        });
+
+        html += `</div>`;
+        document.getElementById('content').innerHTML = html;
+        updateProgressBar(dayId, currentWeek);
+    }
+
+    function renderMealPrep() {
+        let html = `
+        <div class="section-card">
+            <div class="section-header">
+                <div class="section-title">Multi-Day Meal Prep Protocol</div>
+            </div>
+            <p style="margin-bottom: 20px; color: var(--text-secondary);">Because you are a cook with variable schedules, avoid one massive Sunday prep. We use a 3-part split schedule to maximize food freshness and minimize kitchen fatigue.</p>
+            
+            <div class="warn-box" style="background: var(--bg-secondary); border-color: var(--border-secondary); color: var(--text);">
+                <strong>Split Timeline</strong>
+                <ul style="margin-top: 8px; margin-left: 20px;">
+                    <li><strong>Mon (60 min):</strong> Post-workout. Heavy batch. Sets up Mon/Tue/Wed.</li>
+                    <li><strong>Wed (45 min):</strong> Evening. Medium batch. Sets up Thu/Fri.</li>
+                    <li><strong>Thu (30 min):</strong> Evening. Veggie/Tofu batch. Sets up Saturday vegetarian day.</li>
+                </ul>
+            </div>
+
+            <h3 style="margin: 24px 0 12px; border-bottom: 1px solid var(--border); padding-bottom: 8px;">A) MONDAY PREP (Post-Workout)</h3>
+            <ul style="margin-left: 20px; margin-bottom: 20px; line-height: 1.8;">
+                <li><strong>Chicken (400g):</strong> Season & bake 400°F (22-25 min). Portion for Mon/Tue.</li>
+                <li><strong>Basmati Rice (2 cups dry):</strong> Stovetop (15 min). Store in large container.</li>
+                <li><strong>Broccoli & Peppers:</strong> Steam or roast a large tray for early-week meals.</li>
+            </ul>
+
+            <h3 style="margin: 24px 0 12px; border-bottom: 1px solid var(--border); padding-bottom: 8px;">B) WEDNESDAY PREP (Evening)</h3>
+            <ul style="margin-left: 20px; margin-bottom: 20px; line-height: 1.8;">
+                <li><strong>Chicken (300g):</strong> Season & bake 400°F (22-25 min). Portion for Thu/Fri.</li>
+                <li><strong>Sweet Potatoes (3-4):</strong> Cube & roast at 400°F (30-35 min).</li>
+                <li><strong>Basmati Rice (1 cup dry):</strong> Cook fresh to restock for Thu/Fri.</li>
+            </ul>
+
+            <h3 style="margin: 24px 0 12px; border-bottom: 1px solid var(--border); padding-bottom: 8px;">C) THURSDAY PREP (Evening - Veggie Focus)</h3>
+            <ul style="margin-left: 20px; margin-bottom: 20px; line-height: 1.8;">
+                <li><strong>Tofu:</strong> Press block, cube, store in airtight container for Saturday.</li>
+                <li><strong>Legumes:</strong> Ensure chickpeas and red lentils are easily accessible for Saturday.</li>
+                <li><strong>Veggie Chop:</strong> Pre-chop spinach, onions, and beans for the weekend meals to save time.</li>
+                <li><strong>Turkey:</strong> Ensure ground/breast turkey is thawed in fridge for Sunday.</li>
+            </ul>
+
+            <table style="margin-top: 24px;">
+                <thead>
+                    <tr><th>Food Item</th><th>Max Fridge Life</th><th>Storage Rule</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>Cooked Chicken</td><td>3-4 days</td><td>Eat Monday's batch by Thursday morning.</td></tr>
+                    <tr><td>Cooked Rice</td><td>3-4 days</td><td>Cool quickly, store sealed. Reheat until steaming.</td></tr>
+                    <tr><td>Roasted Sweet Potato</td><td>4-5 days</td><td>Sealed container. Reheats well in microwave.</td></tr>
+                    <tr><td>Tuna (canned)</td><td>Open: 2 days</td><td>Only open when ready to eat.</td></tr>
+                </tbody>
+            </table>
+        </div>`;
+        document.getElementById('content').innerHTML = html;
+    }
+
+    function renderSupplements() {
+        let html = `
+        <div class="section-card">
+            <div class="section-header">
+                <div class="section-title">Supplement Stack</div>
+            </div>
+            <div class="info-box">Only evidence-based, proven supplements are included. No fat burners, no BCAAs, no proprietary blends.</div>
+            
+            <div style="display: grid; gap: 16px; margin-top: 20px;">
+                <div style="border: 1px solid var(--border); padding: 16px; border-radius: var(--radius-sm);">
+                    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+                        <span class="supp-pill pill-creatine">Creatine</span>
+                        <h4 style="margin:0;">Creatine Monohydrate</h4>
+                    </div>
+                    <p style="font-size: 0.9rem; color: var(--text-secondary);"><strong>Dose:</strong> 5g daily (Morning/Pre-WO)<br>
+                    <strong>Why:</strong> Maximizes intracellular ATP for strength and volume. No loading phase needed. Take every single day.</p>
+                </div>
+
+                <div style="border: 1px solid var(--border); padding: 16px; border-radius: var(--radius-sm);">
+                    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+                        <span class="supp-pill pill-vitd">Vit D3</span>
+                        <h4 style="margin:0;">Vitamin D3</h4>
+                    </div>
+                    <p style="font-size: 0.9rem; color: var(--text-secondary);"><strong>Dose:</strong> 2,000 IU daily (With dinner)<br>
+                    <strong>Why:</strong> Critical in St. John's due to low sun exposure. Fat-soluble, MUST be taken with a meal containing fats (like chicken thighs).</p>
+                </div>
+
+                <div style="border: 1px solid var(--border); padding: 16px; border-radius: var(--radius-sm);">
+                    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+                        <span class="supp-pill pill-omega">Omega-3</span>
+                        <h4 style="margin:0;">Omega-3 (EPA/DHA)</h4>
+                    </div>
+                    <p style="font-size: 0.9rem; color: var(--text-secondary);"><strong>Dose:</strong> 1-2g combined EPA+DHA daily (With dinner)<br>
+                    <strong>Why:</strong> Anti-inflammatory, supports joint health and recovery. Fat-soluble, take with dinner.</p>
+                </div>
+
+                <div style="border: 1px solid var(--border); padding: 16px; border-radius: var(--radius-sm);">
+                    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+                        <span class="supp-pill pill-whey">Whey</span>
+                        <h4 style="margin:0;">Whey Protein Concentrate/Isolate</h4>
+                    </div>
+                    <p style="font-size: 0.9rem; color: var(--text-secondary);"><strong>Dose:</strong> 1 scoop post-workout (Training days only)<br>
+                    <strong>Why:</strong> Convenient, fast-digesting protein to hit 140g target. Derived from dairy, 100% vegetarian-compliant for Saturdays.</p>
+                </div>
+
+                <div style="border: 1px solid var(--border); padding: 16px; border-radius: var(--radius-sm);">
+                    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+                        <span class="supp-pill pill-caffeine">Caffeine</span>
+                        <h4 style="margin:0;">Caffeine</h4>
+                    </div>
+                    <p style="font-size: 0.9rem; color: var(--text-secondary);"><strong>Dose:</strong> 200-300mg (30-45m Pre-workout, training days only)<br>
+                    <strong>Why:</strong> Reduces rate of perceived exertion. Use black coffee or a cheap caffeine pill. Skip on rest days to maintain sensitivity.</p>
+                </div>
+            </div>
+        </div>`;
+        document.getElementById('content').innerHTML = html;
+    }
+
+    function renderShopping() {
+        let html = `
+        <div class="section-card">
+            <div class="section-header">
+                <div class="section-title">Weekly Shopping List (Sobeys NL)</div>
+            </div>
+            <p style="margin-bottom: 20px; color: var(--text-secondary); font-size: 0.9rem;">Stick to the perimeter. Look for Compliments brand to save money. Est. Weekly Cost: $110-140 CAD.</p>
+
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px;">
+                
+                <div>
+                    <h4 style="border-bottom: 2px solid var(--accent); padding-bottom: 4px; margin-bottom: 12px;">Proteins (Meat/Fish)</h4>
+                    <ul style="list-style-type: none; font-size: 0.9rem; line-height: 1.8;">
+                        <li><input type="checkbox" style="margin-right:8px"> Chicken breasts (Family pack, ~1kg)</li>
+                        <li><input type="checkbox" style="margin-right:8px"> Skinless chicken thighs (~500g)</li>
+                        <li><input type="checkbox" style="margin-right:8px"> Ground turkey (Lean, 1 pack)</li>
+                        <li><input type="checkbox" style="margin-right:8px"> Turkey breast (Small roast)</li>
+                        <li><input type="checkbox" style="margin-right:8px"> Canned chunk light tuna (3-4 cans)</li>
+                        <li><input type="checkbox" style="margin-right:8px"> Large eggs (1 dozen)</li>
+                    </ul>
+                </div>
+
+                <div>
+                    <h4 style="border-bottom: 2px solid var(--accent); padding-bottom: 4px; margin-bottom: 12px;">Dairy & Dairy-Alt</h4>
+                    <ul style="list-style-type: none; font-size: 0.9rem; line-height: 1.8;">
+                        <li><input type="checkbox" style="margin-right:8px"> Silk Dark Choc Almond Milk (2 cartons)</li>
+                        <li><input type="checkbox" style="margin-right:8px"> Silk Almond Milk (Original/Unsweetened)</li>
+                        <li><input type="checkbox" style="margin-right:8px"> 0% Plain Greek Yogurt (Oikos large tub)</li>
+                        <li><input type="checkbox" style="margin-right:8px"> 2% Cottage cheese (Large tub)</li>
+                        <li><input type="checkbox" style="margin-right:8px"> Cheddar cheese block (Compliments)</li>
+                        <li><input type="checkbox" style="margin-right:8px"> Feta cheese crumble</li>
+                    </ul>
+                </div>
+
+                <div>
+                    <h4 style="border-bottom: 2px solid var(--accent); padding-bottom: 4px; margin-bottom: 12px;">Carbs & Grains</h4>
+                    <ul style="list-style-type: none; font-size: 0.9rem; line-height: 1.8;">
+                        <li><input type="checkbox" style="margin-right:8px"> White Basmati Rice (Large bag)</li>
+                        <li><input type="checkbox" style="margin-right:8px"> Rolled oats (Large bag)</li>
+                        <li><input type="checkbox" style="margin-right:8px"> Whole wheat wraps (1 pack)</li>
+                        <li><input type="checkbox" style="margin-right:8px"> Whole wheat bread (1 loaf)</li>
+                        <li><input type="checkbox" style="margin-right:8px"> Whole wheat penne pasta</li>
+                        <li><input type="checkbox" style="margin-right:8px"> Plain rice cakes</li>
+                        <li><input type="checkbox" style="margin-right:8px"> Granola (Low sugar)</li>
+                    </ul>
+                </div>
+
+                <div>
+                    <h4 style="border-bottom: 2px solid var(--accent); padding-bottom: 4px; margin-bottom: 12px;">Produce</h4>
+                    <ul style="list-style-type: none; font-size: 0.9rem; line-height: 1.8;">
+                        <li><input type="checkbox" style="margin-right:8px"> Bananas (7-8 medium)</li>
+                        <li><input type="checkbox" style="margin-right:8px"> Apples (Bag)</li>
+                        <li><input type="checkbox" style="margin-right:8px"> Frozen blueberries (Large bag)</li>
+                        <li><input type="checkbox" style="margin-right:8px"> Sweet potatoes (4-5 medium)</li>
+                        <li><input type="checkbox" style="margin-right:8px"> Broccoli crowns (2-3 large)</li>
+                        <li><input type="checkbox" style="margin-right:8px"> Fresh spinach (Large tub)</li>
+                        <li><input type="checkbox" style="margin-right:8px"> Bell peppers (3-pack)</li>
+                        <li><input type="checkbox" style="margin-right:8px"> Cherry tomatoes</li>
+                        <li><input type="checkbox" style="margin-right:8px"> Avocados (1-2)</li>
+                    </ul>
+                </div>
+
+                <div>
+                    <h4 style="border-bottom: 2px solid var(--accent); padding-bottom: 4px; margin-bottom: 12px;">Vegetarian Saturday Staples</h4>
+                    <ul style="list-style-type: none; font-size: 0.9rem; line-height: 1.8;">
+                        <li><input type="checkbox" style="margin-right:8px"> Firm tofu (1 block)</li>
+                        <li><input type="checkbox" style="margin-right:8px"> Canned chickpeas (1 can)</li>
+                        <li><input type="checkbox" style="margin-right:8px"> Dry red lentils (Small bag)</li>
+                        <li><input type="checkbox" style="margin-right:8px"> Canned diced tomatoes</li>
+                    </ul>
+                </div>
+
+                <div>
+                    <h4 style="border-bottom: 2px solid var(--accent); padding-bottom: 4px; margin-bottom: 12px;">Pantry Fats & Extras</h4>
+                    <ul style="list-style-type: none; font-size: 0.9rem; line-height: 1.8;">
+                        <li><input type="checkbox" style="margin-right:8px"> Peanut butter (Natural)</li>
+                        <li><input type="checkbox" style="margin-right:8px"> Almond butter</li>
+                        <li><input type="checkbox" style="margin-right:8px"> Whole almonds</li>
+                        <li><input type="checkbox" style="margin-right:8px"> Chia seeds</li>
+                        <li><input type="checkbox" style="margin-right:8px"> Olive oil (Check if empty)</li>
+                        <li><input type="checkbox" style="margin-right:8px"> Sesame oil (Small bottle)</li>
+                        <li><input type="checkbox" style="margin-right:8px"> Soy sauce & Honey</li>
+                        <li><input type="checkbox" style="margin-right:8px"> Black beans & Corn (Canned)</li>
+                    </ul>
+                </div>
+            </div>
+        </div>`;
+        document.getElementById('content').innerHTML = html;
+    }
+
+    function render() {
+        if (['monday','tuesday','wednesday','thursday','friday','saturday','sunday'].includes(currentDay)) {
+            renderDay(currentDay);
+        } else if (currentDay === 'prep') {
+            renderMealPrep();
+        } else if (currentDay === 'supps') {
+            renderSupplements();
+        } else if (currentDay === 'shop') {
+            renderShopping();
+        }
+    }
+
+    function loadAndRender() {
+        const day = currentDay;
+        const week = currentWeek;
+        if (!['monday','tuesday','wednesday','thursday','friday','saturday','sunday'].includes(day)) {
+            render();
+            return;
+        }
+        var key = ck(day, week);
+        if (CACHE[key]) { render(); return; }
+        render(); // render with empty state first
+        loadRows(day, week).then(function() { render(); });
+    }
+
+    // Initialize
+    setWeek(1);
+    setDay('monday');
+
+</script>
+</body>
+</html>
