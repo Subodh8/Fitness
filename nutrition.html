@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Fitness OS - Mesocycle 1 Nutrition Engine</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
     <style>
         :root {
             --bg: #ffffff;
@@ -202,6 +203,16 @@
         .sync-dot.syncing { background: var(--accent); }
         .sync-dot.error { background: #ef4444; }
         .sync-status { font-size: 11px; font-family: var(--mono); color: var(--text-tertiary); }
+
+        /* Macro Graph Card */
+        .graph-card { background: #eff6ff; border: 1px solid #bfdbfe; border-radius: var(--radius); padding: 20px; margin-bottom: 24px; }
+        @media (prefers-color-scheme: dark) { .graph-card { background: #0c1a33; border-color: #1e3a5f; } }
+        .graph-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 8px; }
+        .graph-title { font-size: 1rem; font-weight: 700; color: var(--text); }
+        .graph-legend { display: flex; gap: 16px; flex-wrap: wrap; }
+        .graph-legend-item { display: flex; align-items: center; gap: 6px; font-size: 0.8rem; font-weight: 600; }
+        .legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+        .graph-canvas-wrap { position: relative; height: 220px; }
     </style>
 </head>
 <body>
@@ -235,6 +246,20 @@
         <strong>Strategy Rule:</strong> No beef. Avoid fish (tuna allowed). White rice only (strictly basmati where rice is used). Substitute dairy milk with Silk dark chocolate almond milk. 
     </div>
 
+    <div class="graph-card">
+        <div class="graph-header">
+            <span class="graph-title" id="graph-title">Weekly Macro Tracker — Week 1</span>
+            <div class="graph-legend">
+                <span class="graph-legend-item"><span class="legend-dot" style="background:#1d4ed8"></span>Protein</span>
+                <span class="graph-legend-item"><span class="legend-dot" style="background:#db2777"></span>Carbs</span>
+                <span class="graph-legend-item"><span class="legend-dot" style="background:#7c3aed"></span>Fat</span>
+            </div>
+        </div>
+        <div class="graph-canvas-wrap">
+            <canvas id="macroChart"></canvas>
+        </div>
+    </div>
+
     <div class="selector-row" id="week-selector">
         <button class="pill-btn active" onclick="setWeek(1)">Week 1</button>
         <button class="pill-btn" onclick="setWeek(2)">Week 2</button>
@@ -261,6 +286,155 @@
     </div>
 
 <script>
+    /* ── Program timeline ───────────────────────────────── */
+    var PROGRAM_START = '2026-03-23T00:00:00';
+    var DAYS_ORDER = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'];
+    var DAY_LABELS  = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+
+    function getCurrentWeek() {
+        var nowNDT   = new Date(new Date().toLocaleString('en-US', {timeZone:'America/St_Johns'}));
+        var startNDT = new Date(new Date(PROGRAM_START).toLocaleString('en-US', {timeZone:'America/St_Johns'}));
+        var diff = Math.floor((nowNDT - startNDT) / (7 * 24 * 60 * 60 * 1000));
+        return Math.max(1, diff + 1);
+    }
+
+    function getMesocycleWeek(w) { return ((w - 1) % 4) + 1; }
+
+    /* ── NDT Monday midnight reset ──────────────────────── */
+    function getNDTWeekKey() {
+        var ndtNow = new Date(new Date().toLocaleString('en-US', {timeZone:'America/St_Johns'}));
+        var dow = ndtNow.getDay();
+        var daysBack = dow === 0 ? 6 : dow - 1;
+        var mon = new Date(ndtNow);
+        mon.setDate(mon.getDate() - daysBack);
+        return mon.toISOString().slice(0, 10);
+    }
+
+    /* ── Macro parsing & computation ───────────────────── */
+    function parseMacros(str) {
+        var m = str.match(/([\d.]+)P\s*\/\s*([\d.]+)F\s*\/\s*([\d.]+)C/);
+        return m ? {p: parseFloat(m[1]), f: parseFloat(m[2]), c: parseFloat(m[3])} : {p:0, f:0, c:0};
+    }
+
+    function getDayMacros(dayId, week) {
+        var checked = CACHE[ck(dayId, week)] || {};
+        var p = 0, f = 0, c = 0;
+        var meals = (DATA[dayId] && DATA[dayId].meals) ? DATA[dayId].meals : [];
+        meals.forEach(function(meal, idx) {
+            if (checked[idx]) {
+                var m = parseMacros(meal.macros);
+                p += m.p; f += m.f; c += m.c;
+            }
+        });
+        return {p: p, f: f, c: c};
+    }
+
+    /* ── Load all 7 days in parallel ───────────────────── */
+    function loadAllDays(week) {
+        return Promise.all(DAYS_ORDER.map(function(d) {
+            if (CACHE[ck(d, week)]) return Promise.resolve();
+            return loadRows(d, week);
+        }));
+    }
+
+    /* ── Chart.js graph ────────────────────────────────── */
+    var chart = null;
+
+    function initChart() {
+        var ctx = document.getElementById('macroChart').getContext('2d');
+        var isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        var gridColor = isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.07)';
+        var tickColor = isDark ? '#6e6e68' : '#9ca3af';
+
+        chart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: DAY_LABELS,
+                datasets: [
+                    {
+                        label: 'Protein (g)',
+                        data: [0,0,0,0,0,0,0],
+                        borderColor: '#1d4ed8',
+                        backgroundColor: 'rgba(29,78,216,0.08)',
+                        borderWidth: 2.5,
+                        tension: 0.4,
+                        pointRadius: 5,
+                        pointHoverRadius: 7,
+                        pointBackgroundColor: '#1d4ed8',
+                        fill: false
+                    },
+                    {
+                        label: 'Carbs (g)',
+                        data: [0,0,0,0,0,0,0],
+                        borderColor: '#db2777',
+                        backgroundColor: 'rgba(219,39,119,0.08)',
+                        borderWidth: 2.5,
+                        tension: 0.4,
+                        pointRadius: 5,
+                        pointHoverRadius: 7,
+                        pointBackgroundColor: '#db2777',
+                        fill: false
+                    },
+                    {
+                        label: 'Fat (g)',
+                        data: [0,0,0,0,0,0,0],
+                        borderColor: '#7c3aed',
+                        backgroundColor: 'rgba(124,58,237,0.08)',
+                        borderWidth: 2.5,
+                        tension: 0.4,
+                        pointRadius: 5,
+                        pointHoverRadius: 7,
+                        pointBackgroundColor: '#7c3aed',
+                        fill: false
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: isDark ? '#1f2937' : '#ffffff',
+                        titleColor: isDark ? '#f9fafb' : '#111827',
+                        bodyColor: isDark ? '#d1d5db' : '#374151',
+                        borderColor: isDark ? '#374151' : '#e5e7eb',
+                        borderWidth: 1,
+                        padding: 10,
+                        callbacks: {
+                            label: function(ctx) {
+                                return ' ' + ctx.dataset.label + ': ' + Math.round(ctx.parsed.y) + 'g';
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: { display: false },
+                        ticks: { color: tickColor, font: { size: 12, weight: '600' } },
+                        border: { color: gridColor }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        grid: { color: gridColor },
+                        ticks: { color: tickColor, font: { size: 11 }, callback: function(v) { return v + 'g'; } },
+                        border: { display: false }
+                    }
+                }
+            }
+        });
+    }
+
+    function updateGraph() {
+        if (!chart) return;
+        var totals = DAYS_ORDER.map(function(d) { return getDayMacros(d, currentWeek); });
+        chart.data.datasets[0].data = totals.map(function(t) { return Math.round(t.p); });
+        chart.data.datasets[1].data = totals.map(function(t) { return Math.round(t.c); });
+        chart.data.datasets[2].data = totals.map(function(t) { return Math.round(t.f); });
+        chart.update('none');
+    }
+
     // Supabase Sync
     var NF_URL = 'https://zylbnchahrjvrkhqivwp.supabase.co/functions/v1/nutrition-sync';
 
@@ -315,8 +489,8 @@
         syncUI('syncing', 'Resetting...');
         CACHE[ck(day, week)] = {};
         fetch(NF_URL + '?action=reset&device_id=' + DEVICE + '&day=' + day + '&week=' + week, { method: 'DELETE' })
-            .then(function() { syncUI('synced', 'Reset done'); render(); })
-            .catch(function() { syncUI('error', 'Offline'); render(); });
+            .then(function() { syncUI('synced', 'Reset done'); render(); updateGraph(); })
+            .catch(function() { syncUI('error', 'Offline'); render(); updateGraph(); });
     }
 
     // System State
@@ -586,6 +760,7 @@
             row.classList.remove('completed');
         }
         updateProgressBar(day, week);
+        updateGraph();
     }
 
     function updateProgressBar(day, week) {
@@ -615,7 +790,11 @@
             btn.classList.toggle('active', idx + 1 === w);
         });
         document.getElementById('week-subtitle').innerText = weekSubtitles[w];
+        var realW = getCurrentWeek() - getMesocycleWeek(getCurrentWeek()) + w;
+        var graphTitle = document.getElementById('graph-title');
+        if (graphTitle) graphTitle.textContent = 'Weekly Macro Tracker — Week ' + realW;
         loadAndRender();
+        loadAllDays(w).then(function() { updateGraph(); });
     }
 
     function setDay(d) {
@@ -962,8 +1141,37 @@
     }
 
     // Initialize
-    setWeek(1);
-    setDay('monday');
+    (function() {
+        // NDT week-reset detection
+        var storedKey = localStorage.getItem('fos-week-key');
+        var currentKey = getNDTWeekKey();
+        if (storedKey !== currentKey) {
+            localStorage.setItem('fos-week-key', currentKey);
+            CACHE = {};
+        }
+        // Check every 60s for Monday midnight crossover
+        setInterval(function() {
+            if (getNDTWeekKey() !== localStorage.getItem('fos-week-key')) {
+                location.reload();
+            }
+        }, 60000);
+
+        // Auto-set mesocycle week from real calendar
+        var realWeek = getCurrentWeek();
+        var mcWeek = getMesocycleWeek(realWeek);
+        var graphTitle = document.getElementById('graph-title');
+        if (graphTitle) graphTitle.textContent = 'Weekly Macro Tracker — Week ' + realWeek;
+
+        // Init Chart.js
+        initChart();
+
+        // Set week + render current day
+        setWeek(mcWeek);
+        setDay('monday');
+
+        // Load all 7 days then draw graph
+        loadAllDays(mcWeek).then(function() { updateGraph(); });
+    })();
 
 </script>
 </body>

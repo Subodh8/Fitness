@@ -59,10 +59,17 @@
   }
 
   /* Header */
-  .header { margin-bottom: 40px; text-align: center; }
+  .header { margin-bottom: 40px; text-align: center; position: relative; }
   .header-label { font-family: var(--mono); font-size: 12px; color: var(--accent); text-transform: uppercase; font-weight: 600; letter-spacing: 0.05em; margin-bottom: 8px; display: block;}
   .header h1 { font-size: 32px; font-weight: 700; margin-bottom: 8px; }
   .header p { color: var(--text-secondary); font-size: 16px; }
+
+  /* Week Badge */
+  .week-badge { position: absolute; top: 0; right: 0; text-align: right; line-height: 1.2; }
+  .week-badge-label { font-family: var(--mono); font-size: 10px; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.06em; display: block; margin-bottom: 3px; }
+  .week-badge-number { font-size: 22px; font-weight: 700; color: var(--accent); display: block; }
+  .week-badge-sub { font-family: var(--mono); font-size: 10px; color: var(--text-tertiary); display: block; margin-top: 2px; }
+  @media(max-width: 600px) { .week-badge { position: static; text-align: center; margin-bottom: 16px; } }
 
   /* Navigation Cards */
   .nav-grid {
@@ -117,6 +124,11 @@
 
 <div class="container">
   <div class="header">
+    <div class="week-badge">
+      <span class="week-badge-label">Program Week</span>
+      <span class="week-badge-number" id="week-num">Week —</span>
+      <span class="week-badge-sub" id="week-sub"></span>
+    </div>
     <span class="header-label">Fitness OS • Core</span>
     <h1>My Fitness Journey</h1>
     <p>7-Month Body Recomposition Dashboard</p>
@@ -140,5 +152,34 @@
 
 </div>
 
+<script>
+  var PROGRAM_START = '2026-03-23T00:00:00';
+
+  function getCurrentWeek() {
+    var nowNDT  = new Date(new Date().toLocaleString('en-US', {timeZone: 'America/St_Johns'}));
+    var startNDT = new Date(new Date(PROGRAM_START).toLocaleString('en-US', {timeZone: 'America/St_Johns'}));
+    var diff = Math.floor((nowNDT - startNDT) / (7 * 24 * 60 * 60 * 1000));
+    return Math.max(1, diff + 1);
+  }
+
+  function getMesocycleWeek(w) {
+    return ((w - 1) % 4) + 1;
+  }
+
+  function getMesocycleNumber(w) {
+    return Math.ceil(w / 4);
+  }
+
+  function updateWeekBadge() {
+    var w  = getCurrentWeek();
+    var mw = getMesocycleWeek(w);
+    var mc = getMesocycleNumber(w);
+    document.getElementById('week-num').textContent = 'Week ' + w;
+    document.getElementById('week-sub').textContent = 'MC' + mc + ' · W' + mw + ' of 4';
+  }
+
+  updateWeekBadge();
+  setInterval(updateWeekBadge, 60000);
+</script>
 </body>
 </html>
