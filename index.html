@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Fitness OS — Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -42,7 +43,7 @@
     z-index: 1;
     max-width: 960px;
     margin: 0 auto;
-    padding: 32px 16px;
+    padding: 32px 16px 60px;
     width: 100%;
   }
 
@@ -164,6 +165,134 @@
     color: rgba(255,255,255,0.50);
     text-align: center;
   }
+
+  /* ── Weight Graph Section ─────────────────────────────── */
+  .weight-section {
+    margin-top: 28px;
+  }
+
+  .weight-card {
+    background: rgba(255, 255, 255, 0.07);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: var(--radius);
+    padding: 28px 28px 24px;
+  }
+
+  .weight-card-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .weight-card-header .left .section-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    display: block;
+    margin-bottom: 4px;
+  }
+
+  .weight-card-header .left h2 {
+    font-size: 18px;
+    font-weight: 600;
+    color: #ffffff;
+    margin-bottom: 2px;
+  }
+
+  .weight-card-header .left p {
+    font-size: 12px;
+    color: rgba(255,255,255,0.45);
+  }
+
+  .weight-stats {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+  }
+
+  .weight-stat {
+    text-align: right;
+  }
+
+  .weight-stat .stat-label {
+    font-family: var(--mono);
+    font-size: 9px;
+    color: rgba(255,255,255,0.40);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    display: block;
+    margin-bottom: 2px;
+  }
+
+  .weight-stat .stat-value {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--accent);
+    display: block;
+    line-height: 1;
+  }
+
+  .weight-stat .stat-delta {
+    font-family: var(--mono);
+    font-size: 10px;
+    display: block;
+    margin-top: 2px;
+  }
+
+  .delta-down { color: #34d399; }
+  .delta-up   { color: #f87171; }
+  .delta-flat { color: rgba(255,255,255,0.35); }
+
+  .chart-wrap {
+    position: relative;
+    height: 220px;
+  }
+
+  .weight-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 220px;
+    gap: 10px;
+    color: rgba(255,255,255,0.30);
+  }
+
+  .weight-empty .empty-icon { font-size: 32px; }
+  .weight-empty .empty-text { font-size: 13px; font-family: var(--mono); }
+
+  .weight-footer {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 16px;
+    padding-top: 14px;
+    border-top: 1px solid rgba(255,255,255,0.08);
+  }
+
+  .sync-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.20);
+    flex-shrink: 0;
+    transition: background 0.4s;
+  }
+  .sync-dot.live { background: #34d399; box-shadow: 0 0 6px rgba(52,211,153,0.5); }
+  .sync-dot.error { background: #f87171; }
+
+  .weight-footer-text {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: rgba(255,255,255,0.30);
+  }
 </style>
 </head>
 <body>
@@ -195,9 +324,48 @@
       <p>Daily Macros, Meal Prep & Supplement Stack</p>
     </a>
   </div>
+
+  <!-- ── Weight Graph ──────────────────────────────────── -->
+  <div class="weight-section">
+    <div class="weight-card">
+      <div class="weight-card-header">
+        <div class="left">
+          <span class="section-label">Weight Tracker • This Week</span>
+          <h2>Body Weight</h2>
+          <p>Logged daily via Slack · auto-synced from Supabase</p>
+        </div>
+        <div class="weight-stats">
+          <div class="weight-stat">
+            <span class="stat-label">Today</span>
+            <span class="stat-value" id="stat-today">—</span>
+            <span class="stat-delta delta-flat" id="stat-delta">—</span>
+          </div>
+          <div class="weight-stat">
+            <span class="stat-label">7-day avg</span>
+            <span class="stat-value" id="stat-avg">—</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="chart-wrap" id="chart-wrap">
+        <div class="weight-empty" id="weight-empty">
+          <span class="empty-icon">📊</span>
+          <span class="empty-text">Loading weight data…</span>
+        </div>
+        <canvas id="weightChart" style="display:none;"></canvas>
+      </div>
+
+      <div class="weight-footer">
+        <div class="sync-dot" id="sync-dot"></div>
+        <span class="weight-footer-text" id="sync-label">Connecting to Supabase…</span>
+      </div>
+    </div>
+  </div>
+
 </div>
 
 <script>
+  /* ── Week Badge ─────────────────────────────────────── */
   var PROGRAM_START = '2026-03-23T00:00:00';
 
   function getCurrentWeek() {
@@ -220,6 +388,220 @@
 
   updateWeekBadge();
   setInterval(updateWeekBadge, 60000);
+
+  /* ── Weight Graph ───────────────────────────────────── */
+  var SUPABASE_URL = 'https://zylbnchahrjvrkhqivwp.supabase.co';
+  var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp5bGJuY2hhaHJqdnJraHFpdndwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4NzUzNTMsImV4cCI6MjA4OTQ1MTM1M30.99M5S2F0zyG6cqTYHeeJ0haDJCkVwDiFAilTZnIiLB8';
+
+  var DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+  /* Return the Mon–Sun date range for the current NDT week */
+  function getCurrentWeekDates() {
+    var now = new Date(new Date().toLocaleString('en-US', {timeZone: 'America/St_Johns'}));
+    var dow = now.getDay(); // 0=Sun … 6=Sat
+    var diffToMon = (dow === 0) ? -6 : 1 - dow;
+    var monday = new Date(now);
+    monday.setDate(now.getDate() + diffToMon);
+    monday.setHours(0, 0, 0, 0);
+    var dates = [];
+    for (var i = 0; i < 7; i++) {
+      var d = new Date(monday);
+      d.setDate(monday.getDate() + i);
+      dates.push(d);
+    }
+    return dates;
+  }
+
+  function toDateStr(d) {
+    var y = d.getFullYear();
+    var m = String(d.getMonth() + 1).padStart(2, '0');
+    var day = String(d.getDate()).padStart(2, '0');
+    return y + '-' + m + '-' + day;
+  }
+
+  var weightChart = null;
+
+  function renderChart(weekDates, logMap) {
+    var canvas = document.getElementById('weightChart');
+    var empty  = document.getElementById('weight-empty');
+
+    var dataPoints = weekDates.map(function(d) {
+      var key = toDateStr(d);
+      return logMap[key] !== undefined ? logMap[key] : null;
+    });
+
+    var hasData = dataPoints.some(function(v) { return v !== null; });
+
+    if (!hasData) {
+      empty.innerHTML = '<span class="empty-icon">📊</span><span class="empty-text">No data yet this week — reply to the 6 AM Slack prompt to log</span>';
+      empty.style.display = 'flex';
+      canvas.style.display = 'none';
+      return;
+    }
+
+    empty.style.display = 'none';
+    canvas.style.display = 'block';
+
+    /* Stats */
+    var today = toDateStr(new Date(new Date().toLocaleString('en-US', {timeZone: 'America/St_Johns'})));
+    var todayVal = logMap[today];
+    var values   = dataPoints.filter(function(v) { return v !== null; });
+    var avg      = values.reduce(function(a, b) { return a + b; }, 0) / values.length;
+
+    document.getElementById('stat-today').textContent = todayVal !== undefined ? todayVal.toFixed(1) + ' kg' : '—';
+    document.getElementById('stat-avg').textContent   = avg.toFixed(1) + ' kg';
+
+    /* Delta vs yesterday */
+    var todayIdx = weekDates.findIndex(function(d) { return toDateStr(d) === today; });
+    var deltaEl  = document.getElementById('stat-delta');
+    if (todayIdx > 0 && todayVal !== undefined) {
+      for (var i = todayIdx - 1; i >= 0; i--) {
+        var prev = dataPoints[i];
+        if (prev !== null) {
+          var diff = todayVal - prev;
+          if (diff < 0) {
+            deltaEl.textContent = diff.toFixed(1) + ' kg';
+            deltaEl.className = 'stat-delta delta-down';
+          } else if (diff > 0) {
+            deltaEl.textContent = '+' + diff.toFixed(1) + ' kg';
+            deltaEl.className = 'stat-delta delta-up';
+          } else {
+            deltaEl.textContent = '± 0.0 kg';
+            deltaEl.className = 'stat-delta delta-flat';
+          }
+          break;
+        }
+      }
+    } else {
+      deltaEl.textContent = '—';
+      deltaEl.className = 'stat-delta delta-flat';
+    }
+
+    /* Build gradient */
+    var ctx = canvas.getContext('2d');
+    var grad = ctx.createLinearGradient(0, 0, 0, 200);
+    grad.addColorStop(0,   'rgba(245,158,11,0.30)');
+    grad.addColorStop(1,   'rgba(245,158,11,0.00)');
+
+    /* Compute y-axis range with padding */
+    var minVal = Math.min.apply(null, values);
+    var maxVal = Math.max.apply(null, values);
+    var pad    = Math.max((maxVal - minVal) * 0.4, 1.5);
+
+    if (weightChart) { weightChart.destroy(); }
+
+    weightChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: DAY_LABELS,
+        datasets: [{
+          label: 'Weight (kg)',
+          data: dataPoints,
+          borderColor: '#f59e0b',
+          borderWidth: 2.5,
+          pointBackgroundColor: dataPoints.map(function(v) {
+            return v !== null ? '#f59e0b' : 'transparent';
+          }),
+          pointBorderColor: dataPoints.map(function(v) {
+            return v !== null ? '#f59e0b' : 'transparent';
+          }),
+          pointRadius: dataPoints.map(function(v) { return v !== null ? 5 : 0; }),
+          pointHoverRadius: 7,
+          backgroundColor: grad,
+          fill: true,
+          tension: 0.4,
+          spanGaps: true
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: 'rgba(10,10,10,0.85)',
+            borderColor: 'rgba(245,158,11,0.4)',
+            borderWidth: 1,
+            titleColor: 'rgba(255,255,255,0.55)',
+            bodyColor: '#f59e0b',
+            bodyFont: { family: "'SF Mono','Fira Mono',monospace", size: 13, weight: '600' },
+            padding: 10,
+            callbacks: {
+              label: function(ctx) {
+                return ctx.parsed.y !== null ? ctx.parsed.y.toFixed(1) + ' kg' : 'No data';
+              }
+            }
+          }
+        },
+        scales: {
+          x: {
+            grid: { color: 'rgba(255,255,255,0.06)' },
+            ticks: {
+              color: 'rgba(255,255,255,0.45)',
+              font: { family: "'SF Mono','Fira Mono',monospace", size: 11 }
+            },
+            border: { color: 'rgba(255,255,255,0.10)' }
+          },
+          y: {
+            min: Math.max(0, minVal - pad),
+            max: maxVal + pad,
+            grid: { color: 'rgba(255,255,255,0.06)' },
+            ticks: {
+              color: 'rgba(255,255,255,0.45)',
+              font: { family: "'SF Mono','Fira Mono',monospace", size: 11 },
+              callback: function(v) { return v.toFixed(1) + ' kg'; },
+              maxTicksLimit: 6
+            },
+            border: { color: 'rgba(255,255,255,0.10)' }
+          }
+        }
+      }
+    });
+  }
+
+  function setSyncStatus(state, text) {
+    var dot   = document.getElementById('sync-dot');
+    var label = document.getElementById('sync-label');
+    dot.className = 'sync-dot' + (state ? ' ' + state : '');
+    label.textContent = text;
+  }
+
+  async function loadWeightData() {
+    var weekDates = getCurrentWeekDates();
+    var monday    = toDateStr(weekDates[0]);
+    var sunday    = toDateStr(weekDates[6]);
+
+    try {
+      var res = await fetch(
+        SUPABASE_URL + '/rest/v1/weight_logs?logged_date=gte.' + monday + '&logged_date=lte.' + sunday + '&select=logged_date,weight_kg&order=logged_date.asc',
+        {
+          headers: {
+            'apikey': SUPABASE_KEY,
+            'Authorization': 'Bearer ' + SUPABASE_KEY
+          }
+        }
+      );
+
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+
+      var rows = await res.json();
+      var logMap = {};
+      rows.forEach(function(r) { logMap[r.logged_date] = parseFloat(r.weight_kg); });
+
+      renderChart(weekDates, logMap);
+      setSyncStatus('live', 'Live · last synced ' + new Date().toLocaleTimeString('en-US', {hour:'2-digit', minute:'2-digit'}));
+    } catch (err) {
+      setSyncStatus('error', 'Sync error — ' + err.message);
+      document.getElementById('weight-empty').innerHTML =
+        '<span class="empty-icon">⚠️</span><span class="empty-text">Could not load data</span>';
+      document.getElementById('weight-empty').style.display = 'flex';
+      document.getElementById('weightChart').style.display = 'none';
+    }
+  }
+
+  loadWeightData();
+  setInterval(loadWeightData, 5 * 60 * 1000); /* refresh every 5 min */
 </script>
 </body>
 </html>
