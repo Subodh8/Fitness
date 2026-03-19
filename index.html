@@ -8,70 +8,110 @@
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
   :root {
-    --bg: #ffffff;
-    --bg-secondary: #f6f5f2;
-    --bg-tertiary: #f0ede8;
-    --text: #1a1a18;
-    --text-secondary: #5c5c57;
-    --text-tertiary: #8a8a84;
-    --border: rgba(0,0,0,0.10);
-    --border-secondary: rgba(0,0,0,0.18);
-    --accent: #d97706;
-    --accent-bg: #fef3c7;
-    --accent-text: #78350f;
-    --radius: 12px;
+    --accent: #f59e0b;
+    --accent-dim: rgba(245,158,11,0.15);
+    --radius: 14px;
     --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
     --mono: 'SF Mono', 'Fira Mono', 'Cascadia Code', monospace;
   }
 
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #1c1c1a;
-      --bg-secondary: #252523;
-      --bg-tertiary: #2e2e2b;
-      --text: #f0ede8;
-      --text-secondary: #a8a89e;
-      --text-tertiary: #6e6e68;
-      --border: rgba(255,255,255,0.09);
-      --border-secondary: rgba(255,255,255,0.16);
-      --accent: #f59e0b;
-      --accent-bg: #2d1f00;
-      --accent-text: #fcd34d;
-    }
-  }
-
+  /* ── Background ───────────────────────────────────────── */
   body {
     font-family: var(--font);
-    background: var(--bg-tertiary);
-    color: var(--text);
-    font-size: 15px;
-    line-height: 1.6;
     min-height: 100vh;
     display: flex;
-    align-items: center; /* Centers content vertically */
+    align-items: center;
+    background: #0a0a0a url('background.jpg') center / cover no-repeat fixed;
+    color: #f0ede8;
+    font-size: 15px;
+    line-height: 1.6;
   }
 
+  /* Dark overlay so text stays readable */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.62);
+    z-index: 0;
+  }
+
+  /* ── Layout ───────────────────────────────────────────── */
   .container {
+    position: relative;
+    z-index: 1;
     max-width: 960px;
     margin: 0 auto;
     padding: 32px 16px;
     width: 100%;
   }
 
-  /* Header */
-  .header { margin-bottom: 40px; text-align: center; position: relative; }
-  .header-label { font-family: var(--mono); font-size: 12px; color: var(--accent); text-transform: uppercase; font-weight: 600; letter-spacing: 0.05em; margin-bottom: 8px; display: block;}
-  .header h1 { font-size: 32px; font-weight: 700; margin-bottom: 8px; }
-  .header p { color: var(--text-secondary); font-size: 16px; }
+  /* ── Week Badge — fixed viewport top-right ────────────── */
+  .week-badge {
+    position: fixed;
+    top: 20px;
+    right: 24px;
+    text-align: right;
+    line-height: 1.2;
+    z-index: 100;
+    background: rgba(0,0,0,0.45);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 10px;
+    padding: 10px 16px;
+  }
+  .week-badge-label {
+    font-family: var(--mono);
+    font-size: 9px;
+    color: rgba(255,255,255,0.45);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    display: block;
+    margin-bottom: 2px;
+  }
+  .week-badge-number {
+    font-size: 21px;
+    font-weight: 700;
+    color: var(--accent);
+    display: block;
+  }
+  .week-badge-sub {
+    font-family: var(--mono);
+    font-size: 9px;
+    color: rgba(255,255,255,0.40);
+    display: block;
+    margin-top: 2px;
+  }
 
-  /* Week Badge */
-  .week-badge { position: absolute; top: 0; right: 0; text-align: right; line-height: 1.2; }
-  .week-badge-label { font-family: var(--mono); font-size: 10px; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.06em; display: block; margin-bottom: 3px; }
-  .week-badge-number { font-size: 22px; font-weight: 700; color: var(--accent); display: block; }
-  .week-badge-sub { font-family: var(--mono); font-size: 10px; color: var(--text-tertiary); display: block; margin-top: 2px; }
-  @media(max-width: 600px) { .week-badge { position: static; text-align: center; margin-bottom: 16px; } }
+  /* ── Header ───────────────────────────────────────────── */
+  .header {
+    margin-bottom: 48px;
+    text-align: center;
+  }
+  .header-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--accent);
+    text-transform: uppercase;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    margin-bottom: 10px;
+    display: block;
+  }
+  .header h1 {
+    font-size: 36px;
+    font-weight: 700;
+    margin-bottom: 8px;
+    color: #ffffff;
+    letter-spacing: -0.02em;
+  }
+  .header p {
+    color: rgba(255,255,255,0.55);
+    font-size: 16px;
+  }
 
-  /* Navigation Cards */
+  /* ── Navigation Cards ─────────────────────────────────── */
   .nav-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
@@ -79,6 +119,8 @@
   }
   @media(max-width: 600px) {
     .nav-grid { grid-template-columns: 1fr; }
+    .week-badge { top: 12px; right: 12px; padding: 8px 12px; }
+    .week-badge-number { font-size: 17px; }
   }
 
   .nav-card {
@@ -86,89 +128,87 @@
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    background: var(--bg);
-    border: 1px solid var(--border);
+    background: rgba(255, 255, 255, 0.07);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.14);
     border-radius: var(--radius);
-    padding: 40px 24px;
+    padding: 44px 24px;
     text-decoration: none;
-    color: var(--text);
-    transition: all 0.2s ease;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+    color: #f0ede8;
+    transition: all 0.22s ease;
   }
-  
+
   .nav-card:hover {
+    background: rgba(255, 255, 255, 0.13);
     border-color: var(--accent);
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(217, 119, 6, 0.1);
+    transform: translateY(-3px);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(245,158,11,0.25);
   }
 
   .nav-card .icon {
-    font-size: 36px;
-    margin-bottom: 16px;
+    font-size: 40px;
+    margin-bottom: 18px;
+    filter: drop-shadow(0 2px 8px rgba(0,0,0,0.4));
   }
 
   .nav-card h2 {
     font-size: 20px;
     font-weight: 600;
     margin-bottom: 6px;
+    color: #ffffff;
   }
 
   .nav-card p {
-    font-size: 14px;
-    color: var(--text-secondary);
+    font-size: 13px;
+    color: rgba(255,255,255,0.50);
     text-align: center;
   }
 </style>
 </head>
 <body>
 
+<!-- Week badge — fixed top-right corner of screen -->
+<div class="week-badge">
+  <span class="week-badge-label">Program Week</span>
+  <span class="week-badge-number" id="week-num">Week —</span>
+  <span class="week-badge-sub" id="week-sub"></span>
+</div>
+
 <div class="container">
   <div class="header">
-    <div class="week-badge">
-      <span class="week-badge-label">Program Week</span>
-      <span class="week-badge-number" id="week-num">Week —</span>
-      <span class="week-badge-sub" id="week-sub"></span>
-    </div>
     <span class="header-label">Fitness OS • Core</span>
     <h1>My Fitness Journey</h1>
     <p>7-Month Body Recomposition Dashboard</p>
   </div>
 
   <div class="nav-grid">
-    <!-- Replace 'workout.html' with your actual workout HTML file name -->
     <a href="workout.html" class="nav-card">
       <div class="icon">🏋️‍♂️</div>
       <h2>Workout Plan</h2>
       <p>Mesocycle 1 Training Engine & Progression</p>
     </a>
 
-    <!-- Replace 'nutrition.html' with your actual nutrition HTML file name -->
     <a href="nutrition.html" class="nav-card">
       <div class="icon">🥗</div>
       <h2>Nutrition Plan</h2>
       <p>Daily Macros, Meal Prep & Supplement Stack</p>
     </a>
   </div>
-
 </div>
 
 <script>
   var PROGRAM_START = '2026-03-23T00:00:00';
 
   function getCurrentWeek() {
-    var nowNDT  = new Date(new Date().toLocaleString('en-US', {timeZone: 'America/St_Johns'}));
+    var nowNDT   = new Date(new Date().toLocaleString('en-US', {timeZone: 'America/St_Johns'}));
     var startNDT = new Date(new Date(PROGRAM_START).toLocaleString('en-US', {timeZone: 'America/St_Johns'}));
     var diff = Math.floor((nowNDT - startNDT) / (7 * 24 * 60 * 60 * 1000));
     return Math.max(1, diff + 1);
   }
 
-  function getMesocycleWeek(w) {
-    return ((w - 1) % 4) + 1;
-  }
-
-  function getMesocycleNumber(w) {
-    return Math.ceil(w / 4);
-  }
+  function getMesocycleWeek(w) { return ((w - 1) % 4) + 1; }
+  function getMesocycleNumber(w) { return Math.ceil(w / 4); }
 
   function updateWeekBadge() {
     var w  = getCurrentWeek();
